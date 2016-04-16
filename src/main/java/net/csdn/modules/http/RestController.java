@@ -91,16 +91,23 @@ public class RestController {
             }
 
         }
+
+        // 此处ApplicationController instance 是per request的
         ApplicationController applicationController = ServiceFramwork.injector.getInstance(handlerKey.v1());
+        // 让变量可访问，并赋值
         enhanceApplicationController(applicationController, request, restResponse);
         if (handlerKey == defaultHandlerKey) {
             handlerKey.v2().invoke(applicationController);
         } else {
+            // 实现类似AOP功能，pre, around
             filter(handlerKey, applicationController);
         }
 
     }
 
+    /**
+     * 修改applicationController相应变量的访问属性为可访问，并为其赋值
+     */
     public static void enhanceApplicationController(ApplicationController applicationController, final RestRequest request, RestResponse restResponse) throws Exception {
         ReflectHelper.field(applicationController, "request", request);
         ReflectHelper.field(applicationController, "restResponse", restResponse);
@@ -111,12 +118,16 @@ public class RestController {
         Map<Method, Map<Class, List<Method>>> result = FilterHelper2.create(handlerKey.v1());
         Map<Class, List<Method>> filters = result.get(handlerKey.v2());
         WowAroundFilter first = null;
+
+        // AOP: before
         if (filters.containsKey(BeforeFilter.class)) {
             for (Method filter : filters.get(BeforeFilter.class)) {
                 filter.setAccessible(true);
                 filter.invoke(applicationController);
             }
         }
+
+        // AOP: around
         if (filters.containsKey(AroundFilter.class)) {
             Iterator<Method> iterator = filters.get(AroundFilter.class).iterator();
 

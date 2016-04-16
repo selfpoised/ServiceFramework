@@ -54,6 +54,16 @@ public class HttpServer {
     private final Server server;
     private CSLogger logger = Loggers.getLogger(getClass());
 
+    /**
+     *
+     * 实际上restController在整个ServiceFramework中是singleton
+     * 详见class HttpModule line 14:
+     * bind(RestController.class).toInstance(new RestController());
+     *
+     * RestController中存储了所有可能的用户请求url路径与其对应处理方法
+     * 的映射。对应路径比如"/a/b"的处理函数，是通过树的数据结构来查找的
+     *
+     */
     private RestController restController;
     private boolean disableMysql = false;
     private Settings settings;
@@ -63,6 +73,11 @@ public class HttpServer {
     private List<HttpStartProcessor> httpStartProcessorList = new ArrayList();
     private List<HttpFinishProcessor> httpFinishProcessorList = new ArrayList();
 
+    /**
+     * ThreadLocal会针对每个线程独自创建线程私有变量，对其它线程不可见
+     * 因而勿需同步。虽然线程亡，该变量亡，但若类似线程池复用形式，
+     * 则使用完毕需显式删除，避免继承脏数据
+     */
     private static ThreadLocal<HttpHolder> httpHolder = new ThreadLocal<HttpHolder>();
 
     public static void setHttpHolder(HttpHolder value) {
@@ -84,6 +99,8 @@ public class HttpServer {
         this.systemLogger = systemLogger;
         this.restController = restController;
         this.api = api;
+
+        // 此两处注册主要是做QPS统计
         registerHttpStartProcessor(new DefaultHttpStartProcessor());
         registerHttpFinishProcessor(new DefaultHttpFinishProcessor());
 
@@ -190,10 +207,13 @@ public class HttpServer {
                     httpStartProcessor.process(settings, httpServletRequest, httpServletResponse, processInfo);
                 }
                 try {
+                    // 此处最终会调用相应ApplicationController 里对应方法，而render，如果正常完成则抛出RenderFinish
+                    // 下面catch里面会直接return。此时会将要返回的内容设置给相应变量，但并未写入response实体
                     restController.dispatchRequest(restRequest, channel);
                 } catch (Exception e) {
                     ExceptionHandler.renderHandle(e);
                 }
+                // 将消息内容返回给client
                 channel.send();
             } catch (Exception e) {
                 if (!"qps-overflow".equals(e.getMessage())) {
