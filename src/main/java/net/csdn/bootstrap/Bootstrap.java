@@ -85,7 +85,7 @@ public class Bootstrap {
             MongoMongo.configure(new MongoMongo.CSDNMongoConfiguration(ServiceFramwork.mode.name(), tuple.v1(), ServiceFramwork.scanService.getLoader(), ServiceFramwork.classPool));
         }
 
-        Loader moduleLoader = new ModuelLoader();
+        Loader moduleLoader = new ModuleLoader();
         moduleLoader.load(settings);
 
         List<Loader> loaders = new ArrayList<Loader>();

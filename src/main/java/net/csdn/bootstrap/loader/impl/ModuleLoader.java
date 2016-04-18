@@ -26,7 +26,7 @@ import java.util.List;
  * Date: 12-7-2
  * Time: 上午11:32
  */
-public class ModuelLoader implements Loader {
+public class ModuleLoader implements Loader {
     @Override
     public void load(final Settings settings) {
         final List<Module> moduleList = new ArrayList<Module>();
